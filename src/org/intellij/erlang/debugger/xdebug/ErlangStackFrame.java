@@ -16,12 +16,19 @@
 
 package org.intellij.erlang.debugger.xdebug;
 
+import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.ui.ColoredTextContainer;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.xdebugger.XSourcePosition;
+import com.intellij.xdebugger.evaluation.XDebuggerEvaluator;
 import com.intellij.xdebugger.frame.XCompositeNode;
 import com.intellij.xdebugger.frame.XStackFrame;
 import com.intellij.xdebugger.frame.XValue;
@@ -35,6 +42,11 @@ import org.intellij.erlang.psi.ErlangFunction;
 import org.intellij.erlang.psi.impl.ErlangPsiImplUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 public class ErlangStackFrame extends XStackFrame {
   private final ErlangDebugLocationResolver myResolver;
@@ -52,6 +64,46 @@ public class ErlangStackFrame extends XStackFrame {
     myResolver = resolver;
     myTraceElement = traceElement;
     mySourcePosition = sourcePosition;
+  }
+
+  @Nullable
+  @Override
+  public XDebuggerEvaluator getEvaluator() {
+    try {
+      Files.write(Paths.get("/tmp/wk.java.log"), ("on get eval").getBytes(), StandardOpenOption.APPEND);
+    }catch (IOException e) {
+
+    }
+
+    return new XDebuggerEvaluator() {
+      @Override
+      public void evaluate(@NotNull String expression,
+                           @NotNull XEvaluationCallback callback,
+                           @Nullable XSourcePosition expressionPosition) {
+        try {
+          Files.write(Paths.get("/tmp/wk.java.log"), ("on eval " + expression).getBytes(), StandardOpenOption.APPEND);
+        }catch (IOException e) {
+
+        }
+        callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
+      }
+
+      /*
+      @Nullable
+      @Override
+      public TextRange getExpressionRangeAtOffset(@NotNull Project project,
+                                                  @NotNull Document document,
+                                                  int offset,
+                                                  boolean sideEffectsAllowed) {
+        try {
+          Files.write(Paths.get("/tmp/wk.java.log"), ("on getExpressionRangeAtOffset " + offset + " // " + sideEffectsAllowed).getBytes(), StandardOpenOption.APPEND);
+        }catch (IOException e) {
+
+        }
+        return new TextRange(0, 1);
+      }
+      // */
+    };
   }
 
   @Nullable
