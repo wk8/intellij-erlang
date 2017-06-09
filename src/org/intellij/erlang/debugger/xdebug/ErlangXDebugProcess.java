@@ -16,6 +16,7 @@
 
 package org.intellij.erlang.debugger.xdebug;
 
+import com.ericsson.otp.erlang.OtpErlangObject;
 import com.ericsson.otp.erlang.OtpErlangPid;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
@@ -46,6 +47,7 @@ import com.intellij.xdebugger.breakpoints.XBreakpointHandler;
 import com.intellij.xdebugger.breakpoints.XLineBreakpoint;
 import com.intellij.xdebugger.evaluation.EvaluationMode;
 import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider;
+import com.intellij.xdebugger.evaluation.XDebuggerEvaluator;
 import com.intellij.xdebugger.frame.XSuspendContext;
 import org.intellij.erlang.ErlangFileType;
 import org.intellij.erlang.debugger.node.ErlangDebuggerEventListener;
@@ -54,6 +56,7 @@ import org.intellij.erlang.debugger.node.ErlangDebuggerNodeException;
 import org.intellij.erlang.debugger.node.ErlangProcessSnapshot;
 import org.intellij.erlang.debugger.remote.ErlangRemoteDebugRunConfiguration;
 import org.intellij.erlang.debugger.remote.ErlangRemoteDebugRunningState;
+import org.intellij.erlang.debugger.xdebug.xvalue.ErlangXValueFactory;
 import org.intellij.erlang.psi.ErlangFile;
 import org.intellij.erlang.runconfig.ErlangRunConfigurationBase;
 import org.intellij.erlang.runconfig.ErlangRunningState;
@@ -81,6 +84,7 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   private XBreakpointHandler<?>[] myBreakpointHandlers = new XBreakpointHandler[]{new ErlangLineBreakpointHandler(this)};
   private ConcurrentHashMap<ErlangSourcePosition, XLineBreakpoint<ErlangLineBreakpointProperties>> myPositionToLineBreakpointMap =
     new ConcurrentHashMap<>();
+  private ConcurrentHashMap<OtpErlangPid, XDebuggerEvaluator.XEvaluationCallback> myEvalCallbacks = new ConcurrentHashMap<>();
 
   public ErlangXDebugProcess(@NotNull XDebugSession session, ExecutionEnvironment env) throws ExecutionException {
     //TODO add debug build targets and make sure the project is built using them.
@@ -113,12 +117,20 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
                                                          runConfig.isUseTestCodePath());
   }
 
-  public ErlangDebuggerNode getDebuggerNode() {
-    return myDebuggerNode;
-  }
+  public ErlangDebuggerNode getDebuggerNode() { return myDebuggerNode; }
 
   public ErlangDebugLocationResolver getLocationResolver() {
     return myLocationResolver;
+  }
+
+  public void registerEvalCallback(@NotNull OtpErlangPid pid, @NotNull XDebuggerEvaluator.XEvaluationCallback callback) {
+    myEvalCallbacks.put(pid, callback);
+  }
+
+  @Override
+  public void handleEvaluationResponse(OtpErlangPid pid, OtpErlangObject response) {
+    XDebuggerEvaluator.XEvaluationCallback callback = myEvalCallbacks.get(pid);
+    if (callback != null) { callback.evaluated(ErlangXValueFactory.create(response)); }
   }
 
   @Override

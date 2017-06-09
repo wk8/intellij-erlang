@@ -83,9 +83,9 @@ public class ErlangStackFrame extends XStackFrame {
         }
 
 
-        myDebugProcess.getDebuggerNode().evaluate(expression);
+        myDebugProcess.registerEvalCallback(myDebugProcess.getDebuggerNode().evaluate(expression), callback);
 
-        callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
+        // callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
 
         // TODO wkpo: for the record, from go-lang-idea-plugin
         /*

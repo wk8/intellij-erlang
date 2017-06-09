@@ -118,8 +118,9 @@ public class ErlangDebuggerNode {
   }
 
   // TODO wkpo myLastSuspendedPid really?
-  public void evaluate(@NotNull String expression) {
+  public OtpErlangPid evaluate(@NotNull String expression) {
     addCommand(ErlangDebuggerCommandsProducer.getEvaluateCommand(myLastSuspendedPid, expression));
+    return myLastSuspendedPid;
   }
 
   private void addCommand(ErlangDebuggerCommandsProducer.ErlangDebuggerCommand command) {
