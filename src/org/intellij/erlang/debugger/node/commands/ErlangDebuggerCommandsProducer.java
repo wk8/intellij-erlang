@@ -72,6 +72,10 @@ public final class ErlangDebuggerCommandsProducer {
     return new ContinueCommand(pid);
   }
 
+  // TODO wkpo c'est par stack, faudrait un stack pointer...
+  @NotNull
+  public static ErlangDebuggerCommand getEvaluateCommand(@NotNull OtpErlangPid pid, @NotNull String expression) { return new EvaluateCommand(pid, expression); }
+
   private static class StepOverCommand extends AbstractPidCommand {
     public StepOverCommand(@NotNull OtpErlangPid pid) {
       super("step_over", pid);
@@ -212,6 +216,26 @@ public final class ErlangDebuggerCommandsProducer {
         new OtpErlangAtom("remove_breakpoint"),
         new OtpErlangAtom(myModule),
         new OtpErlangInt(myLine)
+      });
+    }
+  }
+
+  private static class EvaluateCommand implements ErlangDebuggerCommand {
+    private final OtpErlangPid myPid;
+    private final String myExpression;
+
+    public EvaluateCommand(@NotNull OtpErlangPid pid, @NotNull String expression) {
+      myPid = pid;
+      myExpression = expression;
+    }
+
+    @NotNull
+    @Override
+    public OtpErlangTuple toMessage() {
+      return new OtpErlangTuple(new OtpErlangObject[] {
+        new OtpErlangAtom("evaluate"),
+        myPid,
+        new OtpErlangList(myExpression)
       });
     }
   }

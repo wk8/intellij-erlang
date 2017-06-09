@@ -117,6 +117,11 @@ public class ErlangDebuggerNode {
     addCommand(ErlangDebuggerCommandsProducer.getContinueCommand(myLastSuspendedPid));
   }
 
+  // TODO wkpo myLastSuspendedPid really?
+  public void evaluate(@NotNull String expression) {
+    addCommand(ErlangDebuggerCommandsProducer.getEvaluateCommand(myLastSuspendedPid, expression));
+  }
+
   private void addCommand(ErlangDebuggerCommandsProducer.ErlangDebuggerCommand command) {
     synchronized (myCommandsQueue) {
       myCommandsQueue.add(command);

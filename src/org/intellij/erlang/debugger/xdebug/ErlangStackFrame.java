@@ -33,6 +33,7 @@ import com.intellij.xdebugger.frame.XCompositeNode;
 import com.intellij.xdebugger.frame.XStackFrame;
 import com.intellij.xdebugger.frame.XValue;
 import com.intellij.xdebugger.frame.XValueChildrenList;
+import org.intellij.erlang.debugger.node.ErlangDebuggerNode;
 import org.intellij.erlang.debugger.node.ErlangTraceElement;
 import org.intellij.erlang.debugger.node.ErlangVariableBinding;
 import org.intellij.erlang.debugger.xdebug.xvalue.ErlangXValueFactory;
@@ -49,18 +50,22 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class ErlangStackFrame extends XStackFrame {
+  private final ErlangDebuggerNode myDebuggerNode;
   private final ErlangDebugLocationResolver myResolver;
   private final ErlangTraceElement myTraceElement;
   private final ErlangSourcePosition mySourcePosition;
 
-  public ErlangStackFrame(@NotNull ErlangDebugLocationResolver resolver,
+  public ErlangStackFrame(@NotNull ErlangDebuggerNode debuggerNode,
+                          @NotNull ErlangDebugLocationResolver resolver,
                           @NotNull ErlangTraceElement traceElement) {
-    this(resolver, traceElement, ErlangSourcePosition.create(resolver, traceElement));
+    this(debuggerNode, resolver, traceElement, ErlangSourcePosition.create(resolver, traceElement));
   }
 
-  public ErlangStackFrame(@NotNull ErlangDebugLocationResolver resolver,
+  public ErlangStackFrame(@NotNull ErlangDebuggerNode debuggerNode,
+                          @NotNull ErlangDebugLocationResolver resolver,
                           @NotNull ErlangTraceElement traceElement,
                           @Nullable ErlangSourcePosition sourcePosition) {
+    myDebuggerNode = debuggerNode;
     myResolver = resolver;
     myTraceElement = traceElement;
     mySourcePosition = sourcePosition;
@@ -70,7 +75,7 @@ public class ErlangStackFrame extends XStackFrame {
   @Override
   public XDebuggerEvaluator getEvaluator() {
     try {
-      Files.write(Paths.get("/tmp/wk.java.log"), ("on get eval").getBytes(), StandardOpenOption.APPEND);
+      Files.write(Paths.get("/tmp/wk.java.log"), ("on get eval" + "\n").getBytes(), StandardOpenOption.APPEND);
     }catch (IOException e) {
 
     }
@@ -81,10 +86,13 @@ public class ErlangStackFrame extends XStackFrame {
                            @NotNull XEvaluationCallback callback,
                            @Nullable XSourcePosition expressionPosition) {
         try {
-          Files.write(Paths.get("/tmp/wk.java.log"), ("on eval " + expression).getBytes(), StandardOpenOption.APPEND);
+          Files.write(Paths.get("/tmp/wk.java.log"), ("on eval " + expression + "a position " + expressionPosition + "\n").getBytes(), StandardOpenOption.APPEND);
         }catch (IOException e) {
 
         }
+
+        myDebuggerNode.evaluate(expression);
+
         callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
       }
 

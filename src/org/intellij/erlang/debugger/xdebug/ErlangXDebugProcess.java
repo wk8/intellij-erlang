@@ -157,7 +157,7 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
     assert processInBreakpoint != null;
     ErlangSourcePosition breakPosition = ErlangSourcePosition.create(myLocationResolver, processInBreakpoint);
     XLineBreakpoint<ErlangLineBreakpointProperties> breakpoint = getLineBreakpoint(breakPosition);
-    ErlangSuspendContext suspendContext = new ErlangSuspendContext(myLocationResolver, pid, snapshots);
+    ErlangSuspendContext suspendContext = new ErlangSuspendContext(myDebuggerNode, myLocationResolver, pid, snapshots);
     if (breakpoint == null) {
       getSession().positionReached(suspendContext);
     }

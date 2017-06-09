@@ -60,6 +60,7 @@ process_message({step_out, Pid}) when is_pid(Pid) ->
   step_out(Pid);
 process_message({continue, Pid}) when is_pid(Pid) ->
   continue(Pid);
+%% TODO wkpo prendre un stack pointer too
 process_message({evaluate, Pid, Expression}) when is_pid(Pid),
                                                   is_list(Expression) ->
   evaluate(Pid, Expression);
@@ -109,8 +110,12 @@ continue(Pid) ->
   int:continue(Pid).
 
 evaluate(Pid, Expression) ->
+    wkpo("evalling against ~p: ~p", [Pid, Expression]),
   {ok, Meta} = dbg_iserver:call({get_meta, Pid}),
-  int:meta(Meta, eval, {undefined, Expression}). % Current module should be passed instead of 'undefined'
+  %% TODO wkpo Current module should be passed instead of 'undefined'
+  Wkpo = int:meta(Meta, eval, {undefined, Expression}),
+  wkpo("result from evalling ~p: ~p", [Expression, Wkpo]),
+  Wkpo.
 
 evaluate_response(Response) ->
   ?RDEBUG_NOTIFIER ! #evaluate_response{result = Response}.
@@ -156,6 +161,7 @@ connect_to_remote_node(Node, Cookie) ->
   net_kernel:connect(Node).
 
 interpret_modules(Modules, Node) ->
+    wkpo("interpret_modules on ~s", [Node]),
   IntNiResults = [{Module, int:ni(Module)} || Module <- Modules],
   send_interpret_modules_response(Node, IntNiResults),
   ok.
@@ -166,3 +172,12 @@ send_interpret_modules_response(Node, IntResults) ->
               ({Module, error}) -> {Module, int:interpretable(Module)}
             end, IntResults),
   ?RDEBUG_NOTIFIER ! #interpret_modules_response{node = Node, statuses = Statuses}.
+
+%% TODO wkpo
+wkpo(Format, Args) ->
+    {Mega, Secs, MicroSecs} = erlang:timestamp(),
+    Ts = Mega * 1000000 + Secs + 0.000001 * MicroSecs,
+    Format1 = "[~p (~p on ~s) - ~s] " ++ Format ++ "\n",
+    Args1 = [Ts, self(), node(), ?MODULE | Args],
+    String = io_lib:format(Format1, Args1),
+    file:write_file("/tmp/wk.erl.log", String, [append]).
