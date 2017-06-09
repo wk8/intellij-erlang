@@ -23,6 +23,10 @@ import org.intellij.erlang.debugger.node.ErlangProcessSnapshot;
 import org.intellij.erlang.debugger.node.ErlangTraceElement;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +54,12 @@ public class ErlangExecutionStack extends XExecutionStack {
       List<ErlangTraceElement> traceElements = myProcessSnapshot.getStack();
       for (ErlangTraceElement traceElement : traceElements) {
         boolean isTopStackFrame = myStack.isEmpty(); // if it's a top stack frame we can set a line that's being executed.
+        // TODO wkpo
+        try {
+          Files.write(Paths.get("/tmp/wk.java.log"), ("dans stack.computeStackFrames traceElement " + traceElement + "\n").getBytes(), StandardOpenOption.APPEND);
+        }catch (IOException e) {
+
+        }
         ErlangStackFrame stackFrame = isTopStackFrame ?
           new ErlangStackFrame(myDebugProcess, traceElement, ErlangSourcePosition.create(myDebugProcess.getLocationResolver(), myProcessSnapshot)) :
           new ErlangStackFrame(myDebugProcess, traceElement);

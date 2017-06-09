@@ -16,6 +16,7 @@
 
 package org.intellij.erlang.debugger.xdebug;
 
+import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.ericsson.otp.erlang.OtpErlangPid;
 import com.intellij.execution.ExecutionException;
@@ -50,10 +51,7 @@ import com.intellij.xdebugger.evaluation.XDebuggerEditorsProvider;
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator;
 import com.intellij.xdebugger.frame.XSuspendContext;
 import org.intellij.erlang.ErlangFileType;
-import org.intellij.erlang.debugger.node.ErlangDebuggerEventListener;
-import org.intellij.erlang.debugger.node.ErlangDebuggerNode;
-import org.intellij.erlang.debugger.node.ErlangDebuggerNodeException;
-import org.intellij.erlang.debugger.node.ErlangProcessSnapshot;
+import org.intellij.erlang.debugger.node.*;
 import org.intellij.erlang.debugger.remote.ErlangRemoteDebugRunConfiguration;
 import org.intellij.erlang.debugger.remote.ErlangRemoteDebugRunningState;
 import org.intellij.erlang.debugger.xdebug.xvalue.ErlangXValueFactory;
@@ -71,10 +69,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.intellij.erlang.debugger.ErlangDebuggerLog.LOG;
 
 public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebuggerEventListener {
+  private final XDebugSession mySession;
   private final ExecutionEnvironment myExecutionEnvironment;
   private final ErlangRunningState myRunningState;
   private final ErlangDebuggerNode myDebuggerNode;
@@ -84,11 +84,12 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   private XBreakpointHandler<?>[] myBreakpointHandlers = new XBreakpointHandler[]{new ErlangLineBreakpointHandler(this)};
   private ConcurrentHashMap<ErlangSourcePosition, XLineBreakpoint<ErlangLineBreakpointProperties>> myPositionToLineBreakpointMap =
     new ConcurrentHashMap<>();
-  private ConcurrentHashMap<OtpErlangPid, XDebuggerEvaluator.XEvaluationCallback> myEvalCallbacks = new ConcurrentHashMap<>();
+  private XDebuggerEvaluator.XEvaluationCallback myEvalCallback = null;
 
   public ErlangXDebugProcess(@NotNull XDebugSession session, ExecutionEnvironment env) throws ExecutionException {
     //TODO add debug build targets and make sure the project is built using them.
     super(session);
+    mySession = session;
 
     session.setPauseActionSupported(false);
 
@@ -117,20 +118,25 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
                                                          runConfig.isUseTestCodePath());
   }
 
-  public ErlangDebuggerNode getDebuggerNode() { return myDebuggerNode; }
-
+  @NotNull
   public ErlangDebugLocationResolver getLocationResolver() {
     return myLocationResolver;
   }
 
-  public void registerEvalCallback(@NotNull OtpErlangPid pid, @NotNull XDebuggerEvaluator.XEvaluationCallback callback) {
-    myEvalCallbacks.put(pid, callback);
+  public synchronized void evaluateExpression(@NotNull String expression,
+                                              @NotNull XDebuggerEvaluator.XEvaluationCallback callback,
+                                              @NotNull ErlangTraceElement traceElement) {
+    mySession.pause();
+    myEvalCallback = callback;
+    myDebuggerNode.evaluate(expression, traceElement);
   }
 
   @Override
-  public void handleEvaluationResponse(OtpErlangPid pid, OtpErlangObject response) {
-    XDebuggerEvaluator.XEvaluationCallback callback = myEvalCallbacks.get(pid);
-    if (callback != null) { callback.evaluated(ErlangXValueFactory.create(response)); }
+  public synchronized void handleEvaluationResponse(OtpErlangObject response) {
+    if (myEvalCallback != null) {
+      myEvalCallback.evaluated(ErlangXValueFactory.create(response));
+    }
+    mySession.resume();
   }
 
   @Override

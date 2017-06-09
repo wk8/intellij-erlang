@@ -30,5 +30,5 @@ public interface ErlangDebuggerEventListener {
   void breakpointIsSet(String module, int line);
   void breakpointReached(OtpErlangPid pid, List<ErlangProcessSnapshot> snapshots);
   void debuggerStopped();
-  void handleEvaluationResponse(OtpErlangPid pid, OtpErlangObject response);
+  void handleEvaluationResponse(OtpErlangObject response);
 }

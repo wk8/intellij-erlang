@@ -8,9 +8,7 @@
 -include("remote_debugger_messages.hrl").
 -include("trace_utils.hrl").
 
--record(state, {
-  interpreted_modules = [] :: [module()],
-  meta_to_pid = #{}        :: #{pid() => pid()}}).
+-record(state, {interpreted_modules = [] :: [module()]}).
 
 run(Debugger) ->
   register(?RDEBUG_LISTENER, self()),
@@ -34,9 +32,6 @@ handle_message(Message, State) ->
 
 uses_state(#interpret_modules{})               -> true;
 uses_state(#debug_remote_node{})               -> true;
-uses_state(#evaluate{})                        -> true;
-% responses from interpreter
-uses_state({_Meta, {eval_rsp, _EvalResponse}}) -> true;
 uses_state(_Message)                           -> false.
 
 process_message({interpret_modules, NewModules},
@@ -44,14 +39,7 @@ process_message({interpret_modules, NewModules},
   interpret_modules(NewModules),
   State#state{interpreted_modules = Modules ++ NewModules};
 process_message({debug_remote_node, Node, Cookie}, #state{interpreted_modules = Modules} = State) ->
-  debug_remote_node(Node, Cookie, Modules), State;
-%% TODO wkpo prendre un stack pointer too
-process_message({evaluate, Pid, Expression}, State) when is_pid(Pid),
-                                                         is_list(Expression) ->
-  evaluate(Pid, Expression, State);
- % responses from interpreter
-process_message({Meta, {eval_rsp, EvalResponse}}, State) ->
-  evaluate_response(Meta, EvalResponse, State), State.
+  debug_remote_node(Node, Cookie, Modules), State.
 
 % commands from remote debugger
 process_message({set_breakpoint, Module, Line}) when is_atom(Module),
@@ -72,6 +60,13 @@ process_message({step_out, Pid}) when is_pid(Pid) ->
   step_out(Pid);
 process_message({continue, Pid}) when is_pid(Pid) ->
   continue(Pid);
+process_message({evaluate, Pid, Expression, MaybeStackPointer}) when is_pid(Pid),
+                                                                     is_list(Expression) ->
+  evaluate(Pid, Expression, MaybeStackPointer);
+% responses from interpreter
+process_message({_Meta, {eval_rsp, EvalResponse}}) ->
+  wkpo("EvalResponse: ~p", [EvalResponse]),
+  evaluate_response(EvalResponse);
 % other
 process_message({'DOWN', _, _, _, _}) ->
   exit(normal); % this means the process being debugged has quit
@@ -114,20 +109,20 @@ step_out(Pid) ->
 continue(Pid) ->
   int:continue(Pid).
 
-evaluate(Pid, Expression, #state{meta_to_pid = MetaToPid} = State) ->
-    wkpo("evalling against ~p: ~p", [Pid, Expression]),
+evaluate(Pid, Expression, MaybeStackPointer) ->
   {ok, Meta} = dbg_iserver:call({get_meta, Pid}),
-  Wkpo = int:meta(Meta, eval, {undefined, Expression}),
+  MetaArgsList = [?MODULE, Expression],
+  MetaArgsListWithSP = case MaybeStackPointer =:= undefined of
+    true -> MetaArgsList;
+    false -> MetaArgsList ++ [MaybeStackPointer]
+  end,
+  wkpo("evalling against ~p: ~p with args ~p", [Pid, Expression, list_to_tuple(MetaArgsListWithSP)]),
+  Wkpo = int:meta(Meta, eval, list_to_tuple(MetaArgsListWithSP)),
   wkpo("result from evalling ~p: ~p", [Expression, Wkpo]),
-  State#state{meta_to_pid = maps:put(Meta, Pid, MetaToPid)}.
+  Wkpo.
 
-evaluate_response(Meta, EvalResponse, #state{meta_to_pid = MetaToPid}) ->
-  case maps:find(Meta, MetaToPid) of
-    {ok, Pid} ->
-      ?RDEBUG_NOTIFIER ! #evaluate_response{pid = Pid, result = EvalResponse};
-    error ->
-      ok
-  end.
+evaluate_response(EvalResponse) ->
+  ?RDEBUG_NOTIFIER ! #evaluate_response{result = EvalResponse}.
 
 parse_args(ArgsString) ->
   case erl_scan:string(ArgsString ++ ".") of

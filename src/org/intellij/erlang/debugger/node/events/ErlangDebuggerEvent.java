@@ -43,8 +43,8 @@ public abstract class ErlangDebuggerEvent {
           return new BreakpointReachedEvent(messageTuple);
         case DebugRemoteNodeResponseEvent.NAME:
           return new DebugRemoteNodeResponseEvent(messageTuple);
-        case EvaluteResponseEvent.NAME:
-          return new EvaluteResponseEvent(messageTuple);
+        case EvaluateResponseEvent.NAME:
+          return new EvaluateResponseEvent(messageTuple);
       }
     } catch (DebuggerEventFormatException e) {
       return new UnknownMessageEvent(messageTuple);

@@ -17,15 +17,9 @@
 package org.intellij.erlang.debugger.xdebug;
 
 // TODO wkpo clean up imports (and in other files too...)
-import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.intellij.icons.AllIcons;
-import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.ui.ColoredTextContainer;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.xdebugger.XSourcePosition;
@@ -34,7 +28,6 @@ import com.intellij.xdebugger.frame.XCompositeNode;
 import com.intellij.xdebugger.frame.XStackFrame;
 import com.intellij.xdebugger.frame.XValue;
 import com.intellij.xdebugger.frame.XValueChildrenList;
-import org.intellij.erlang.debugger.node.ErlangDebuggerNode;
 import org.intellij.erlang.debugger.node.ErlangTraceElement;
 import org.intellij.erlang.debugger.node.ErlangVariableBinding;
 import org.intellij.erlang.debugger.xdebug.xvalue.ErlangXValueFactory;
@@ -81,9 +74,7 @@ public class ErlangStackFrame extends XStackFrame {
         }catch (IOException e) {
 
         }
-
-
-        myDebugProcess.registerEvalCallback(myDebugProcess.getDebuggerNode().evaluate(expression), callback);
+        myDebugProcess.evaluateExpression(expression, callback, myTraceElement);
 
         // callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
 

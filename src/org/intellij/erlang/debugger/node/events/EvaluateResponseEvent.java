@@ -28,30 +28,28 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
-class EvaluteResponseEvent extends ErlangDebuggerEvent {
+class EvaluateResponseEvent extends ErlangDebuggerEvent {
   public static final String NAME = "evaluate_response";
-  private final OtpErlangPid myPid;
   private final OtpErlangObject myResponse;
 
-  public EvaluteResponseEvent(OtpErlangTuple receivedMessage) throws DebuggerEventFormatException {
+  public EvaluateResponseEvent(OtpErlangTuple receivedMessage) throws DebuggerEventFormatException {
     OtpErlangObject[] elements = receivedMessage.elements();
-    if (elements.length != 3) {
+    if (elements.length != 2) {
       throw new DebuggerEventFormatException();
     }
 
     // TODO wkpo
     try {
-      Files.write(Paths.get("/tmp/wk.java.log"), ("on recoit result d'eval " + elements[1] + " // " + elements[2] + "\n").getBytes(), StandardOpenOption.APPEND);
+      Files.write(Paths.get("/tmp/wk.java.log"), ("on recoit result d'eval " + elements[1] + "\n").getBytes(), StandardOpenOption.APPEND);
     }catch (IOException e) {
 
     }
 
-    myPid = OtpErlangTermUtil.getPidValue(elements[1]);
-    myResponse = elements[2];
+    myResponse = elements[1];
   }
 
   @Override
   public void process(ErlangDebuggerNode debuggerNode, ErlangDebuggerEventListener eventListener) {
-    eventListener.handleEvaluationResponse(myPid, myResponse);
+    eventListener.handleEvaluationResponse(myResponse);
   }
 }

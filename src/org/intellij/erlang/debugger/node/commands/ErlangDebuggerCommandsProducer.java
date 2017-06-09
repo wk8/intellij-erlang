@@ -18,6 +18,7 @@ package org.intellij.erlang.debugger.node.commands;
 
 import com.ericsson.otp.erlang.*;
 import com.intellij.openapi.util.text.StringUtil;
+import org.intellij.erlang.debugger.node.ErlangTraceElement;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -74,7 +75,9 @@ public final class ErlangDebuggerCommandsProducer {
 
   // TODO wkpo c'est par stack, faudrait un stack pointer...
   @NotNull
-  public static ErlangDebuggerCommand getEvaluateCommand(@NotNull OtpErlangPid pid, @NotNull String expression) { return new EvaluateCommand(pid, expression); }
+  public static ErlangDebuggerCommand getEvaluateCommand(@NotNull OtpErlangPid pid, @NotNull String expression, @NotNull ErlangTraceElement traceElement) {
+    return new EvaluateCommand(pid, expression, traceElement);
+  }
 
   private static class StepOverCommand extends AbstractPidCommand {
     public StepOverCommand(@NotNull OtpErlangPid pid) {
@@ -223,19 +226,27 @@ public final class ErlangDebuggerCommandsProducer {
   private static class EvaluateCommand implements ErlangDebuggerCommand {
     private final OtpErlangPid myPid;
     private final String myExpression;
+    private final ErlangTraceElement myTraceElement;
 
-    public EvaluateCommand(@NotNull OtpErlangPid pid, @NotNull String expression) {
+    public EvaluateCommand(@NotNull OtpErlangPid pid, @NotNull String expression, @NotNull ErlangTraceElement traceElement) {
       myPid = pid;
       myExpression = expression;
+      myTraceElement = traceElement;
     }
 
     @NotNull
     @Override
     public OtpErlangTuple toMessage() {
+      OtpErlangObject stackPointer = myTraceElement.getStackPointer();
+      if (stackPointer == null) {
+        stackPointer = new OtpErlangAtom("undefined");
+      }
+
       return new OtpErlangTuple(new OtpErlangObject[] {
         new OtpErlangAtom("evaluate"),
         myPid,
-        new OtpErlangList(myExpression)
+        new OtpErlangList(myExpression),
+        stackPointer
       });
     }
   }
