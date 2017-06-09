@@ -16,6 +16,7 @@
 
 package org.intellij.erlang.debugger.xdebug;
 
+// TODO wkpo clean up imports (and in other files too...)
 import com.ericsson.otp.erlang.OtpErlangList;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.intellij.icons.AllIcons;
@@ -50,23 +51,19 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 public class ErlangStackFrame extends XStackFrame {
-  private final ErlangDebuggerNode myDebuggerNode;
-  private final ErlangDebugLocationResolver myResolver;
+  private final ErlangXDebugProcess myDebugProcess;
   private final ErlangTraceElement myTraceElement;
   private final ErlangSourcePosition mySourcePosition;
 
-  public ErlangStackFrame(@NotNull ErlangDebuggerNode debuggerNode,
-                          @NotNull ErlangDebugLocationResolver resolver,
+  public ErlangStackFrame(@NotNull ErlangXDebugProcess debugProcess,
                           @NotNull ErlangTraceElement traceElement) {
-    this(debuggerNode, resolver, traceElement, ErlangSourcePosition.create(resolver, traceElement));
+    this(debugProcess, traceElement, ErlangSourcePosition.create(debugProcess.getLocationResolver(), traceElement));
   }
 
-  public ErlangStackFrame(@NotNull ErlangDebuggerNode debuggerNode,
-                          @NotNull ErlangDebugLocationResolver resolver,
+  public ErlangStackFrame(@NotNull ErlangXDebugProcess debugProcess,
                           @NotNull ErlangTraceElement traceElement,
                           @Nullable ErlangSourcePosition sourcePosition) {
-    myDebuggerNode = debuggerNode;
-    myResolver = resolver;
+    myDebugProcess = debugProcess;
     myTraceElement = traceElement;
     mySourcePosition = sourcePosition;
   }
@@ -91,9 +88,10 @@ public class ErlangStackFrame extends XStackFrame {
 
         }
 
-        myDebuggerNode.evaluate(expression);
 
-        callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
+        myDebugProcess.getDebuggerNode().evaluate(expression);
+
+        // callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
       }
 
       /*
@@ -125,7 +123,7 @@ public class ErlangStackFrame extends XStackFrame {
   public void customizePresentation(@NotNull ColoredTextContainer component) {
     String functionName = mySourcePosition != null ? mySourcePosition.getFunctionName() : null;
     if (functionName != null) {
-      ErlangFile module = myResolver.findPsi(mySourcePosition.getSourcePosition().getFile());
+      ErlangFile module = myDebugProcess.getLocationResolver().findPsi(mySourcePosition.getSourcePosition().getFile());
       ErlangFunction function = module != null ? module.getFunction(functionName, mySourcePosition.getFunctionArity()) : null;
       if (function != null) {
         String title = ErlangPsiImplUtil.getQualifiedFunctionName(function);

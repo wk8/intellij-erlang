@@ -113,6 +113,14 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
                                                          runConfig.isUseTestCodePath());
   }
 
+  public ErlangDebuggerNode getDebuggerNode() {
+    return myDebuggerNode;
+  }
+
+  public ErlangDebugLocationResolver getLocationResolver() {
+    return myLocationResolver;
+  }
+
   @Override
   public void debuggerStarted() {
     getSession().reportMessage("Debug process started", MessageType.INFO);
@@ -157,7 +165,7 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
     assert processInBreakpoint != null;
     ErlangSourcePosition breakPosition = ErlangSourcePosition.create(myLocationResolver, processInBreakpoint);
     XLineBreakpoint<ErlangLineBreakpointProperties> breakpoint = getLineBreakpoint(breakPosition);
-    ErlangSuspendContext suspendContext = new ErlangSuspendContext(myDebuggerNode, myLocationResolver, pid, snapshots);
+    ErlangSuspendContext suspendContext = new ErlangSuspendContext(this, pid, snapshots);
     if (breakpoint == null) {
       getSession().positionReached(suspendContext);
     }
