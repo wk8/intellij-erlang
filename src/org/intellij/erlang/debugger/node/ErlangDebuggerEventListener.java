@@ -29,4 +29,5 @@ public interface ErlangDebuggerEventListener {
   void breakpointIsSet(String module, int line);
   void breakpointReached(OtpErlangPid pid, List<ErlangProcessSnapshot> snapshots);
   void debuggerStopped();
+
 }
