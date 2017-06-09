@@ -71,12 +71,6 @@ public class ErlangStackFrame extends XStackFrame {
   @Nullable
   @Override
   public XDebuggerEvaluator getEvaluator() {
-    try {
-      Files.write(Paths.get("/tmp/wk.java.log"), ("on get eval" + "\n").getBytes(), StandardOpenOption.APPEND);
-    }catch (IOException e) {
-
-    }
-
     return new XDebuggerEvaluator() {
       @Override
       public void evaluate(@NotNull String expression,
@@ -91,7 +85,19 @@ public class ErlangStackFrame extends XStackFrame {
 
         myDebugProcess.getDebuggerNode().evaluate(expression);
 
-        // callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
+        callback.evaluated(ErlangXValueFactory.create(new OtpErlangList("coucou po")));
+
+        // TODO wkpo: for the record, from go-lang-idea-plugin
+        /*
+              @Override
+      public void evaluate(@NotNull String expression,
+                           @NotNull XEvaluationCallback callback,
+                           @Nullable XSourcePosition expressionPosition) {
+        myProcessor.send(new DlvRequest.EvalSymbol(expression, myId))
+          .done(variable -> callback.evaluated(createXValue(variable, AllIcons.Debugger.Watch)))
+          .rejected(throwable -> callback.errorOccurred(throwable.getMessage()));
+      }
+         */
       }
 
       /*
