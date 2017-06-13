@@ -16,8 +16,10 @@
 
 package org.intellij.erlang.debugger.xdebug;
 
+import com.ericsson.otp.erlang.OtpErlangAtom;
 import com.ericsson.otp.erlang.OtpErlangObject;
 import com.ericsson.otp.erlang.OtpErlangPid;
+import com.ericsson.otp.erlang.OtpErlangTuple;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
@@ -72,7 +74,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.intellij.erlang.debugger.ErlangDebuggerLog.LOG;
 
 public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebuggerEventListener {
-  private final XDebugSession mySession;
   private final ExecutionEnvironment myExecutionEnvironment;
   private final ErlangRunningState myRunningState;
   private final ErlangDebuggerNode myDebuggerNode;
@@ -83,11 +84,16 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   private ConcurrentHashMap<ErlangSourcePosition, XLineBreakpoint<ErlangLineBreakpointProperties>> myPositionToLineBreakpointMap =
     new ConcurrentHashMap<>();
   private XDebuggerEvaluator.XEvaluationCallback myEvalCallback = null;
+  // right after evaluating an expression, the erlang debugger will trigger a new "breakpoint reached" event
+  // unfortunately, that means this plugin will try to concurrently render the new state of the bindings as
+  // well as the result from the evaluation, which Intellij doesn't seem to handle too well, resulting in
+  // the debugging session losing track of what the current frame is... so we just ignore the next "breakpoint
+  // reached" event right after evaluating an expression - better ideas welcome!
+  private boolean ignoreNextBreakpointReachedEvent = false;
 
   public ErlangXDebugProcess(@NotNull XDebugSession session, ExecutionEnvironment env) throws ExecutionException {
     //TODO add debug build targets and make sure the project is built using them.
     super(session);
-    mySession = session;
 
     session.setPauseActionSupported(false);
 
@@ -124,17 +130,36 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   public synchronized void evaluateExpression(@NotNull String expression,
                                               @NotNull XDebuggerEvaluator.XEvaluationCallback callback,
                                               @NotNull ErlangTraceElement traceElement) {
-    // need to pause the debugging session otherwise the callback might get invalidated
-    mySession.pause();
     myEvalCallback = callback;
+    // see the comment about ignoreNextBreakpointReachedEvent
+    ignoreNextBreakpointReachedEvent = true;
     myDebuggerNode.evaluate(expression, traceElement);
   }
 
   @Override
   public synchronized void handleEvaluationResponse(OtpErlangObject response) {
     if (myEvalCallback != null) {
-      myEvalCallback.evaluated(ErlangXValueFactory.create(response));
-      mySession.resume();
+      String error = null;
+
+      if (response instanceof OtpErlangAtom && ((OtpErlangAtom) response).atomValue().equals("Parse error")) {
+        // it is a parsing error
+        error = "Parse error";
+      } else if (response instanceof OtpErlangTuple) {
+        OtpErlangObject[] elements = ((OtpErlangTuple) response).elements();
+
+        // is it an uncaught exception?
+        if (elements.length == 2
+            && elements[0] instanceof OtpErlangAtom
+            && ((OtpErlangAtom) elements[0]).atomValue().equals("EXIT")) {
+          error = "Uncaught exception: " + elements[1];
+        }
+      }
+
+      if (error == null) {
+        myEvalCallback.evaluated(ErlangXValueFactory.create(response));
+      } else {
+        myEvalCallback.errorOccurred(error);
+      }
     }
   }
 
@@ -178,6 +203,12 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
 
   @Override
   public void breakpointReached(final OtpErlangPid pid, List<ErlangProcessSnapshot> snapshots) {
+    if (ignoreNextBreakpointReachedEvent) {
+      // see the comment about ignoreNextBreakpointReachedEvent
+      ignoreNextBreakpointReachedEvent = false;
+      return;
+    }
+
     ErlangProcessSnapshot processInBreakpoint = ContainerUtil.find(snapshots, erlangProcessSnapshot -> erlangProcessSnapshot.getPid().equals(pid));
     assert processInBreakpoint != null;
     ErlangSourcePosition breakPosition = ErlangSourcePosition.create(myLocationResolver, processInBreakpoint);
