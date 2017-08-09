@@ -41,7 +41,6 @@ public class ErlangStackFrame extends XStackFrame {
   private final ErlangXDebugProcess myDebugProcess;
   private final ErlangTraceElement myTraceElement;
   private final ErlangSourcePosition mySourcePosition;
-  private XDebuggerEvaluator myEvaluator = null;
 
   public ErlangStackFrame(@NotNull ErlangXDebugProcess debugProcess,
                           @NotNull ErlangTraceElement traceElement) {
@@ -59,7 +58,7 @@ public class ErlangStackFrame extends XStackFrame {
   @Nullable
   @Override
   public XDebuggerEvaluator getEvaluator() {
-    myEvaluator = new XDebuggerEvaluator() {
+    return new XDebuggerEvaluator() {
       @Override
       public void evaluate(@NotNull String expression,
                            @NotNull XEvaluationCallback callback,
@@ -67,7 +66,6 @@ public class ErlangStackFrame extends XStackFrame {
         myDebugProcess.evaluateExpression(expression, callback, myTraceElement);
       }
     };
-    return myEvaluator;
   }
 
   @Nullable

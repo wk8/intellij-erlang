@@ -69,6 +69,8 @@ public class ErlangDebuggerNode {
     return myLocalDebuggerPort;
   }
 
+  public OtpErlangPid getLastSuspendedPid() { return myLastSuspendedPid; }
+
   public void stop() {
     myStopped.set(true);
   }

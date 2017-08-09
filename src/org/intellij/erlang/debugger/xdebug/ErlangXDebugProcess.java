@@ -88,8 +88,8 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   // unfortunately, that means this plugin will try to concurrently render the new state of the bindings as
   // well as the result from the evaluation, which Intellij doesn't seem to handle too well, resulting in
   // the debugging session losing track of what the current frame is... so we just ignore the next "breakpoint
-  // reached" event right after evaluating an expression - better ideas welcome!
-  private boolean ignoreNextBreakpointReachedEvent = false;
+  // reached" event in the same process right after evaluating an expression - better ideas welcome!
+  private OtpErlangPid ignoreNextBreakpointReachedEventFor = null;
 
   public ErlangXDebugProcess(@NotNull XDebugSession session, ExecutionEnvironment env) throws ExecutionException {
     //TODO add debug build targets and make sure the project is built using them.
@@ -131,8 +131,8 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
                                               @NotNull XDebuggerEvaluator.XEvaluationCallback callback,
                                               @NotNull ErlangTraceElement traceElement) {
     myEvalCallback = callback;
-    // see the comment about ignoreNextBreakpointReachedEvent
-    ignoreNextBreakpointReachedEvent = true;
+    // see the comment about ignoreNextBreakpointReachedEventFor
+    ignoreNextBreakpointReachedEventFor = myDebuggerNode.getLastSuspendedPid();
     myDebuggerNode.evaluate(expression, traceElement);
   }
 
@@ -202,10 +202,10 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   }
 
   @Override
-  public void breakpointReached(final OtpErlangPid pid, List<ErlangProcessSnapshot> snapshots) {
-    if (ignoreNextBreakpointReachedEvent) {
-      // see the comment about ignoreNextBreakpointReachedEvent
-      ignoreNextBreakpointReachedEvent = false;
+  public synchronized void breakpointReached(final OtpErlangPid pid, List<ErlangProcessSnapshot> snapshots) {
+    if (pid.equals(ignoreNextBreakpointReachedEventFor)) {
+      // see the comment about ignoreNextBreakpointReachedEventFor
+      ignoreNextBreakpointReachedEventFor = null;
       return;
     }
 
