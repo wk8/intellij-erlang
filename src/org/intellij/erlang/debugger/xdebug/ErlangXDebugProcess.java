@@ -139,28 +139,37 @@ public class ErlangXDebugProcess extends XDebugProcess implements ErlangDebugger
   @Override
   public synchronized void handleEvaluationResponse(OtpErlangObject response) {
     if (myEvalCallback != null) {
-      String error = null;
-
-      if (response instanceof OtpErlangAtom && ((OtpErlangAtom) response).atomValue().equals("Parse error")) {
-        // it is a parsing error
-        error = "Parse error";
-      } else if (response instanceof OtpErlangTuple) {
-        OtpErlangObject[] elements = ((OtpErlangTuple) response).elements();
-
-        // is it an uncaught exception?
-        if (elements.length == 2
-            && elements[0] instanceof OtpErlangAtom
-            && ((OtpErlangAtom) elements[0]).atomValue().equals("EXIT")) {
-          error = "Uncaught exception: " + elements[1];
-        }
-      }
+      String error = maybeExtractErrorFromEvaluationResponse(response);
 
       if (error == null) {
         myEvalCallback.evaluated(ErlangXValueFactory.create(response));
-      } else {
+      }
+      else {
         myEvalCallback.errorOccurred(error);
       }
     }
+  }
+
+  // Parses the response from an evaluation and determines whether it's an error
+  // response or not; if it is an error, formats it as a displayable string, if
+  // it's not, just returns null
+  private static String maybeExtractErrorFromEvaluationResponse(OtpErlangObject response) {
+    // is it a parsing error?
+    if (response instanceof OtpErlangAtom && ((OtpErlangAtom) response).atomValue().equals("Parse error")) {
+      return "Parse error";
+    }
+
+    // is it an uncaught exception?
+    if (response instanceof OtpErlangTuple) {
+      OtpErlangObject[] elements = ((OtpErlangTuple) response).elements();
+      if (elements.length == 2
+          && elements[0] instanceof OtpErlangAtom
+          && ((OtpErlangAtom) elements[0]).atomValue().equals("EXIT")) {
+        return "Uncaught exception: " + elements[1];
+      }
+    }
+
+    return null;
   }
 
   @Override
